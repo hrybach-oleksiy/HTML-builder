@@ -1,52 +1,54 @@
-const fs = require('fs');
+const fsPromises = require('fs').promises;
 const path = require('path');
 
-const stylesDir = path.join(__dirname, 'styles');
-const outputDir = path.join(__dirname, 'project-dist');
-const outputFile = path.join(outputDir, 'bundle.css');
+const sourceFolder = './05-merge-styles';
+const destinationFolder = './05-merge-styles/project-dist';
+const outputCssFileName = 'bundle.css';
 
-const compileCSSBundle = () => {
-  fs.mkdir(outputDir, { recursive: true }, (err) => {
-    if (err) {
-      console.error(`Error creating output directory: ${err.message}`);
-      return;
+const compileStyles = async (source, destination, outputFileName) => {
+  try {
+    const files = await fsPromises.readdir(source);
+    const cssFiles = files.filter(
+      (file) => path.extname(file).toLowerCase() === '.css',
+    );
+
+    const outputFile = path.join(destination, outputFileName);
+
+    let cssContent = '';
+
+    for (const file of cssFiles) {
+      const filePath = path.join(source, file);
+      const fileContent = await fsPromises.readFile(filePath, 'utf8');
+
+      cssContent += `/* ${file} */\n${fileContent}\n\n`;
     }
 
-    fs.readdir(stylesDir, { withFileTypes: true }, (err, files) => {
-      if (err) {
-        console.error(`Error reading styles directory: ${err.message}`);
-        return;
-      }
+    await fsPromises.writeFile(outputFile, cssContent);
 
-      const cssFiles = files.filter(
-        (file) => file.isFile() && path.extname(file.name) === '.css',
-      );
-
-      let cssBundle = '';
-
-      cssFiles.forEach((file, index, array) => {
-        const filePath = path.join(stylesDir, file.name);
-
-        fs.readFile(filePath, 'utf8', (err, fileContent) => {
-          if (err) {
-            console.error(`Error reading file: ${err.message}`);
-          } else {
-            cssBundle += `${fileContent}\n`;
-
-            if (index === array.length - 1) {
-              fs.writeFile(outputFile, cssBundle, (err) => {
-                if (err) {
-                  console.error(`Error writing CSS bundle: ${err.message}`);
-                } else {
-                  console.log('CSS bundle created successfully.');
-                }
-              });
-            }
-          }
-        });
-      });
-    });
-  });
+    console.log(
+      `CSS bundle compilation completed. Check ${outputFileName} in ${destination}.`,
+    );
+  } catch (error) {
+    console.error(`Error: ${error.message}`);
+    process.exit(1);
+  }
 };
 
-compileCSSBundle();
+const buildCssBundle = async () => {
+  try {
+    await fsPromises.mkdir(destinationFolder, { recursive: true });
+
+    await compileStyles(
+      path.join(sourceFolder, 'styles'),
+      destinationFolder,
+      outputCssFileName,
+    );
+
+    console.log('CSS bundle building completed.');
+  } catch (error) {
+    console.error(`Error: ${error.message}`);
+    process.exit(1);
+  }
+};
+
+buildCssBundle();
