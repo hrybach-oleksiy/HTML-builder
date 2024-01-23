@@ -1,43 +1,38 @@
 const fs = require('fs');
 const path = require('path');
 
-const sourceFolder = './04-copy-directory/files';
-const destinationFolder = './04-copy-directory/files-copy';
+const sourceDir = path.join(__dirname, 'files');
+const destinationDir = path.join(__dirname, 'files-copy');
 
 const copyDir = (source, destination) => {
-  // Read the contents of the source directory
-  fs.readdir(source, (err, files) => {
+  fs.mkdir(destination, { recursive: true }, (err) => {
     if (err) {
-      console.error(`Error reading source directory: ${err.message}`);
+      console.error(`Error creating destination directory: ${err.message}`);
       return;
     }
 
-    if (!fs.existsSync(destination)) {
-      fs.mkdirSync(destination);
-    }
+    fs.readdir(source, { withFileTypes: true }, (err, files) => {
+      if (err) {
+        console.error(`Error reading source directory: ${err.message}`);
+        return;
+      }
 
-    files.forEach((file) => {
-      const sourcePath = path.join(source, file);
-      const destinationPath = path.join(destination, file);
+      files.forEach((file) => {
+        const sourcePath = path.join(source, file.name);
+        const destinationPath = path.join(destination, file.name);
 
-      const readStream = fs.createReadStream(sourcePath);
-      const writeStream = fs.createWriteStream(destinationPath);
-
-      readStream.pipe(writeStream);
-
-      readStream.on('error', (error) => {
-        console.error(`Error reading file ${file}: ${error.message}`);
-      });
-
-      writeStream.on('error', (error) => {
-        console.error(
-          `Error writing file ${file} to ${destination}: ${error.message}`,
-        );
+        if (file.isDirectory()) {
+          copyDir(sourcePath, destinationPath);
+        } else {
+          fs.copyFile(sourcePath, destinationPath, (err) => {
+            if (err) {
+              console.error(`Error copying file: ${err.message}`);
+            }
+          });
+        }
       });
     });
   });
 };
 
-copyDir(sourceFolder, destinationFolder);
-
-console.log('Copying completed.');
+copyDir(sourceDir, destinationDir);

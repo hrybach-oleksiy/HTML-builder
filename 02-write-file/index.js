@@ -1,38 +1,44 @@
 const fs = require('fs');
+const path = require('path');
 const readline = require('readline');
 
-const filePath = './02-write-file/output.txt';
+const filePath = path.join(__dirname, 'output.txt');
+const inputPrompt = 'Enter text (press Ctrl + C or type "exit" to exit): ';
 
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
 
-const fileStream = fs.createWriteStream(filePath, { flags: 'a' });
-
-console.log(
-  'Welcome! Please enter text. Press "ctrl + c" or type "exit" to exit.',
-);
-
-const handleInput = () => {
-  rl.question('> ', (input) => {
-    if (input.toLowerCase() === 'exit') {
-      console.log('Farewell! Exiting...');
-      rl.close();
-      fileStream.end();
-      process.exit();
+const writeToFile = (text) => {
+  fs.appendFile(filePath, `${text}\n`, (err) => {
+    if (err) {
+      console.error(`Error writing to file: ${err.message}`);
     }
-
-    fileStream.write(input + '\n', (err) => {
-      if (err) {
-        console.error(`Error writing to file: ${err.message}`);
-      } else {
-        console.log('Text written to file.');
-      }
-
-      handleInput();
-    });
   });
 };
 
-handleInput();
+const handleExit = () => {
+  console.log('\nFarewell! Exiting the program.');
+  rl.close();
+};
+
+rl.question(inputPrompt, (input) => {
+  writeToFile(input);
+
+  rl.setPrompt(inputPrompt);
+  rl.prompt();
+
+  rl.on('line', (line) => {
+    if (line.toLowerCase() === 'exit') {
+      handleExit();
+    } else {
+      writeToFile(line);
+      rl.prompt();
+    }
+  });
+
+  rl.on('close', () => {
+    handleExit();
+  });
+});
