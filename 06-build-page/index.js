@@ -1,5 +1,4 @@
 const fs = require('fs').promises;
-const fsPromises = require('fs').promises;
 const path = require('path');
 
 const sourceFolder = './06-build-page';
@@ -36,7 +35,7 @@ const replaceTemplateTags = async (templatePath, componentsPath) => {
 
 const compileStyles = async (source, destination, outputFileName) => {
   try {
-    const files = await fsPromises.readdir(source);
+    const files = await fs.readdir(source);
     const cssFiles = files.filter(
       (file) => path.extname(file).toLowerCase() === '.css',
     );
@@ -47,12 +46,12 @@ const compileStyles = async (source, destination, outputFileName) => {
 
     for (const file of cssFiles) {
       const filePath = path.join(source, file);
-      const fileContent = await fsPromises.readFile(filePath, 'utf8');
+      const fileContent = await fs.readFile(filePath, 'utf8');
 
       cssContent += `/* ${file} */\n${fileContent}\n\n`;
     }
 
-    await fsPromises.writeFile(outputFile, cssContent);
+    await fs.writeFile(outputFile, cssContent);
 
     console.log(
       `CSS compilation completed. Check ${outputFileName} in ${destination}.`,
@@ -65,24 +64,17 @@ const compileStyles = async (source, destination, outputFileName) => {
 
 const copyAssets = async (source, destination) => {
   try {
-    const assetsPath = path.join(destination, 'assets');
+    const entries = await fs.readdir(source, { withFileTypes: true });
 
-    await fsPromises.mkdir(assetsPath, { recursive: true });
+    for (const entry of entries) {
+      const sourcePath = path.join(source, entry.name);
+      const destinationPath = path.join(destination, entry.name);
 
-    const files = await fsPromises.readdir(source);
-
-    for (const item of files) {
-      const sourcePath = path.join(source, item);
-      const destinationPath = path.join(assetsPath, item);
-
-      const isDirectory = (await fsPromises.stat(sourcePath)).isDirectory();
-
-      if (isDirectory) {
+      if (entry.isDirectory()) {
+        await fs.mkdir(destinationPath, { recursive: true });
         await copyAssets(sourcePath, destinationPath);
       } else {
-        const fileContent = await fsPromises.readFile(sourcePath);
-
-        await fsPromises.writeFile(destinationPath, fileContent);
+        await fs.copyFile(sourcePath, destinationPath);
       }
     }
 
@@ -113,7 +105,10 @@ const buildProject = async () => {
       outputCssFileName,
     );
 
-    await copyAssets(path.join(sourceFolder, 'assets'), destinationFolder);
+    await copyAssets(
+      path.join(sourceFolder, 'assets'),
+      path.join(destinationFolder, 'assets'),
+    );
 
     console.log('Project building completed.');
   } catch (error) {
