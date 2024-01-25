@@ -1,38 +1,39 @@
-const fs = require('fs');
+const fs = require('fs').promises;
 const path = require('path');
 
-const sourceDir = path.join(__dirname, 'files');
-const destinationDir = path.join(__dirname, 'files-copy');
+async function copyDir() {
+  try {
+    const sourceDir = path.join(__dirname, 'files');
+    const destDir = path.join(__dirname, 'files-copy');
 
-const copyDir = (source, destination) => {
-  fs.mkdir(destination, { recursive: true }, (err) => {
-    if (err) {
-      console.error(`Error creating destination directory: ${err.message}`);
-      return;
+    await fs.mkdir(destDir, { recursive: true });
+
+    const sourceFiles = await fs.readdir(sourceDir);
+    const destFiles = await fs.readdir(destDir);
+
+    const filesToAdd = sourceFiles.filter((file) => !destFiles.includes(file));
+    const filesToRemove = destFiles.filter(
+      (file) => !sourceFiles.includes(file),
+    );
+
+    for (const file of filesToRemove) {
+      const filePath = path.join(destDir, file);
+      await fs.unlink(filePath);
+      console.log(`Removed: ${file}`);
     }
 
-    fs.readdir(source, { withFileTypes: true }, (err, files) => {
-      if (err) {
-        console.error(`Error reading source directory: ${err.message}`);
-        return;
-      }
+    for (const file of filesToAdd) {
+      const sourceFile = path.join(sourceDir, file);
+      const destFile = path.join(destDir, file);
 
-      files.forEach((file) => {
-        const sourcePath = path.join(source, file.name);
-        const destinationPath = path.join(destination, file.name);
+      await fs.copyFile(sourceFile, destFile);
+      console.log(`Added/Modified: ${file}`);
+    }
 
-        if (file.isDirectory()) {
-          copyDir(sourcePath, destinationPath);
-        } else {
-          fs.copyFile(sourcePath, destinationPath, (err) => {
-            if (err) {
-              console.error(`Error copying file: ${err.message}`);
-            }
-          });
-        }
-      });
-    });
-  });
-};
+    console.log('Directory updated successfully!');
+  } catch (err) {
+    console.error('Error updating directory:', err);
+  }
+}
 
-copyDir(sourceDir, destinationDir);
+copyDir();
